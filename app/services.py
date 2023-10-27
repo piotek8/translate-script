@@ -2,20 +2,19 @@ import os
 import openai
 import concurrent.futures
 from dotenv import load_dotenv
-from app.constants import INPUT_PATH, OUTPUT_PATH
+from app.constants import INPUT_PATH
+from app.constants import OUTPUT_PATH
 from app.prompts import TRANSLATE_BUSINESS_PROMPT
+from core.logs import logger
 
-load_dotenv()
-api_key = os.getenv("OPENAI_API_KEY")
 
 class Translator:
-    def __init__(self, api_key, input_dir, output_dir):
-        openai.api_key = api_key
-        self.input_dir = input_dir
-        self.output_dir = output_dir
-        os.makedirs(output_dir, exist_ok=True)
+    def __init__(self):
+        load_dotenv()
+        self.openai_api_key = os.getenv('OPENAI_API_KEY')
 
-    def divide_text(self, text, chunk_size=1000):
+    @staticmethod
+    def divide_text(text, chunk_size=1000):
         chunks = [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
         return chunks
 
@@ -33,7 +32,7 @@ class Translator:
                     "content": prompt
                 }
             ],
-            max_tokens=2000,
+            max_tokens=4000,
             temperature=1,
         )
         return response['choices'][0]['message']['content']
@@ -53,12 +52,20 @@ class Translator:
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(translated_text)
 
-    def translate_files(self):
-        for filename in os.listdir(self.input_dir):
+        logger.info(f"File processed: {input_path}")
+
+    def process_all_files(self):
+        os.makedirs(OUTPUT_PATH, exist_ok=True)
+
+        for filename in os.listdir(INPUT_PATH):
             if filename.endswith(".md"):
-                input_path = os.path.join(self.input_dir, filename)
-                output_path = os.path.join(self.output_dir, f"{filename[:-3]}_en.md")
+                input_path = os.path.join(INPUT_PATH, filename)
+                output_path = os.path.join(OUTPUT_PATH, f"{filename[:-3]}_en.md")
                 self.process_file(input_path, output_path)
 
-translator = Translator(api_key, INPUT_PATH, OUTPUT_PATH)
-translator.translate_files()
+
+translator = Translator()
+translator.process_all_files()
+
+logger.info("All files processed")
+print("Ready!")
